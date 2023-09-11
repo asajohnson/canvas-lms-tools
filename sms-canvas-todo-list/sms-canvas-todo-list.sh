@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This is a script to automate assignment notifications via Twilio.
+# This is a script to send daily assignment notifications via SMS using Twilio.
 # It fetches TODO list data from the Canvas LMS API, sorts it by due date,
 # formats it, and sends an SMS notification to specified phone numbers.
 # For: <Person's> assignments; sends to <Recipient 1> and <Recipient 2>.
