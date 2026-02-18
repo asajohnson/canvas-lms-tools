@@ -1,0 +1,187 @@
+// Prisma Schema for Canvas SMS Web App
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Parents (web app users)
+model Parent {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String?  @map("first_name") @db.VarChar(100)
+  lastName     String?  @map("last_name") @db.VarChar(100)
+  phoneNumber  String?  @map("phone_number") @db.VarChar(20)
+  timezone     String   @default("America/Los_Angeles") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  parentChildren ParentChild[]
+  messages       Message[]
+  preferences    Preference?
+  auditLogs      AuditLog[]
+
+  @@index([email])
+  @@map("parents")
+}
+
+// Children (students whose Canvas accounts are monitored)
+model Child {
+  id            String   @id @default(uuid())
+  firstName     String   @map("first_name") @db.VarChar(100)
+  lastName      String?  @map("last_name") @db.VarChar(100)
+  phoneNumber   String?  @map("phone_number") @db.VarChar(20)
+  canvasDomain  String   @map("canvas_domain") @db.VarChar(255)
+  canvasUserId  String?  @map("canvas_user_id") @db.VarChar(100)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  parentChildren ParentChild[]
+  canvasToken    CanvasToken?
+  courses        Course[]
+  messages       Message[]
+  auditLogs      AuditLog[]
+
+  @@map("children")
+}
+
+// Parent-child relationships (many-to-many)
+model ParentChild {
+  id           String   @id @default(uuid())
+  parentId     String   @map("parent_id")
+  childId      String   @map("child_id")
+  relationship String   @default("parent") @db.VarChar(50)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  child  Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@index([parentId])
+  @@index([childId])
+  @@map("parent_child")
+}
+
+// Canvas API tokens (encrypted storage)
+model CanvasToken {
+  id              String    @id @default(uuid())
+  childId         String    @unique @map("child_id")
+  encryptedToken  String    @map("encrypted_token") @db.Text
+  encryptionIv    String    @map("encryption_iv") @db.VarChar(255)
+  authTag         String    @map("auth_tag") @db.VarChar(255)
+  tokenCreatedAt  DateTime? @map("token_created_at")
+  lastVerifiedAt  DateTime? @map("last_verified_at")
+  isValid         Boolean   @default(true) @map("is_valid")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId])
+  @@map("canvas_tokens")
+}
+
+// Courses (dynamic course mapping)
+model Course {
+  id             String   @id @default(uuid())
+  childId        String   @map("child_id")
+  canvasCourseId String   @map("canvas_course_id") @db.VarChar(50)
+  courseName     String   @map("course_name") @db.VarChar(255)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, canvasCourseId])
+  @@index([childId])
+  @@map("courses")
+}
+
+// Message history
+model Message {
+  id              String   @id @default(uuid())
+  childId         String   @map("child_id")
+  parentId        String?  @map("parent_id")
+  messageBody     String   @map("message_body") @db.Text
+  recipientPhone  String   @map("recipient_phone") @db.VarChar(20)
+  recipientType   String   @map("recipient_type") @db.VarChar(20)
+  twilioSid       String?  @map("twilio_sid") @db.VarChar(100)
+  status          String   @default("pending") @db.VarChar(50)
+  assignmentCount Int      @default(0) @map("assignment_count")
+  sentAt          DateTime @default(now()) @map("sent_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  child  Child   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  parent Parent? @relation(fields: [parentId], references: [id], onDelete: SetNull)
+
+  @@index([childId])
+  @@index([parentId])
+  @@index([sentAt])
+  @@map("messages")
+}
+
+// Preferences (notification settings per parent)
+model Preference {
+  id                 String   @id @default(uuid())
+  parentId           String   @unique @map("parent_id")
+  sendTime           String   @default("15:00:00") @map("send_time") @db.VarChar(10)
+  sendDays           String   @default("Mon,Tue,Wed,Thu,Fri") @map("send_days") @db.VarChar(50)
+  includeChildInSms  Boolean  @default(true) @map("include_child_in_sms")
+  includeWeekend     Boolean  @default(false) @map("include_weekend")
+  maxAssignmentsPerSms Int    @default(20) @map("max_assignments_per_sms")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@map("preferences")
+}
+
+// Twilio configuration (system-wide, managed by admin)
+model TwilioConfig {
+  id                    String   @id @default(uuid())
+  accountSidEncrypted   String   @map("account_sid_encrypted") @db.Text
+  authTokenEncrypted    String   @map("auth_token_encrypted") @db.Text
+  encryptionIv          String   @map("encryption_iv") @db.VarChar(255)
+  authTag               String   @map("auth_tag") @db.VarChar(255)
+  phoneNumber           String   @map("phone_number") @db.VarChar(20)
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("twilio_config")
+}
+
+// Audit log (for security/debugging)
+model AuditLog {
+  id        String    @id @default(uuid())
+  userId    String?   @map("user_id")
+  userType  String?   @map("user_type") @db.VarChar(20)
+  action    String    @db.VarChar(100)
+  ipAddress String?   @map("ip_address") @db.VarChar(45)
+  userAgent String?   @map("user_agent") @db.Text
+  metadata  Json?
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations (optional FK based on userType)
+  parent    Parent?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  child     Child?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, userType])
+  @@index([createdAt])
+  @@map("audit_log")
+}
