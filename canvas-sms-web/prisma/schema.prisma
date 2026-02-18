@@ -178,8 +178,8 @@ model AuditLog {
   createdAt DateTime  @default(now()) @map("created_at")
 
   // Relations (optional FK based on userType)
-  parent    Parent?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-  child     Child?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parent    Parent?   @relation(fields: [userId], references: [id], onDelete: SetNull, map: "audit_log_parent_fkey")
+  child     Child?    @relation(fields: [userId], references: [id], onDelete: SetNull, map: "audit_log_child_fkey")
 
   @@index([userId, userType])
   @@index([createdAt])
