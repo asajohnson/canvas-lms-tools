@@ -1,7 +1,7 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
-import { AuthRequest, JwtPayload } from '../types/express.types';
+import { JwtPayload } from '../types/express.types';
 import logger from '../utils/logger';
 
 /**
@@ -9,7 +9,7 @@ import logger from '../utils/logger';
  * Verifies JWT token and attaches user info to request
  */
 export const authenticateJwt = (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): void => {

@@ -1,17 +1,16 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../config/database';
 import { canvasService } from '../services/canvas.service';
 import { formattingService } from '../services/formatting.service';
 import { authenticateJwt } from '../middleware/auth';
 import { validate } from '../middleware/validation';
-import { AuthRequest } from '../types/express.types';
 import logger from '../utils/logger';
 
 const router = Router();
 
 // All routes require authentication
-router.use(authenticateJwt);
+router.use(authenticateJwt as any);
 
 // Validation schemas
 const addChildSchema = z.object({
@@ -26,9 +25,9 @@ const addChildSchema = z.object({
  * POST /children
  * Add a new child and validate Canvas token
  */
-router.post('/', validate(addChildSchema), async (req: AuthRequest, res: Response) => {
+router.post('/', validate(addChildSchema), async (req: Request, res: Response) => {
   try {
-    const parentId = req.user!.userId;
+    const parentId = (req as any).user!.userId;
     const { firstName, lastName, phoneNumber, canvasDomain, canvasToken } = req.body;
 
     // Validate Canvas token
@@ -83,9 +82,9 @@ router.post('/', validate(addChildSchema), async (req: AuthRequest, res: Respons
  * GET /children
  * Get all children for authenticated parent
  */
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const parentId = req.user!.userId;
+    const parentId = (req as any).user!.userId;
 
     const parentChildren = await prisma.parentChild.findMany({
       where: {
@@ -122,9 +121,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
  * GET /children/:childId/preview
  * Test Canvas connection and preview message for a child
  */
-router.get('/:childId/preview', async (req: AuthRequest, res: Response) => {
+router.get('/:childId/preview', async (req: Request, res: Response) => {
   try {
-    const parentId = req.user!.userId;
+    const parentId = (req as any).user!.userId;
     const { childId } = req.params;
 
     // Verify parent owns this child
@@ -163,9 +162,9 @@ router.get('/:childId/preview', async (req: AuthRequest, res: Response) => {
  * DELETE /children/:childId
  * Remove a child (deactivate relationship)
  */
-router.delete('/:childId', async (req: AuthRequest, res: Response) => {
+router.delete('/:childId', async (req: Request, res: Response) => {
   try {
-    const parentId = req.user!.userId;
+    const parentId = (req as any).user!.userId;
     const { childId } = req.params;
 
     // Deactivate relationship

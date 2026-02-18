@@ -66,7 +66,7 @@ class Server {
     this.app.use('/api/auth/login', authLimiter);
 
     // Request logging
-    this.app.use((req, res, next) => {
+    this.app.use((req, _res, next) => {
       logger.debug(`${req.method} ${req.path}`);
       next();
     });
@@ -77,7 +77,7 @@ class Server {
    */
   private initializeRoutes(): void {
     // Health check
-    this.app.get('/health', (req, res) => {
+    this.app.get('/health', (_req, res) => {
       res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),

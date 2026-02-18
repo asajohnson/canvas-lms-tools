@@ -1,21 +1,20 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { messageService } from '../services/message.service';
 import { authenticateJwt } from '../middleware/auth';
-import { AuthRequest } from '../types/express.types';
 import logger from '../utils/logger';
 
 const router = Router();
 
 // All routes require authentication
-router.use(authenticateJwt);
+router.use(authenticateJwt as any);
 
 /**
  * GET /messages
  * Get message history for authenticated parent
  */
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const parentId = req.user!.userId;
+    const parentId = (req as any).user!.userId;
     const limit = parseInt(req.query.limit as string) || 50;
 
     const messages = await messageService.getParentMessages(parentId, limit);
@@ -34,9 +33,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
  * GET /messages/child/:childId
  * Get message history for a specific child
  */
-router.get('/child/:childId', async (req: AuthRequest, res: Response) => {
+router.get('/child/:childId', async (req: Request, res: Response) => {
   try {
-    const parentId = req.user!.userId;
+    const parentId = (req as any).user!.userId;
     const { childId } = req.params;
     const limit = parseInt(req.query.limit as string) || 50;
 
